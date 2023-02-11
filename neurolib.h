@@ -31,4 +31,5 @@ class neurolib {
     void runModel(float inputs[], float outputs[]);
     void trainModel(float* inputs, int truth);
     void applyBatch();
+    void printWeightInfo();
 };
