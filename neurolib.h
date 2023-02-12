@@ -15,9 +15,8 @@ class neurolib {
         neuron* neurons;  // Array of neurons
     };
 
-    const float stepSize = 0.1;
+    const float stepSize = 0.1;  // Learning rate
 
-    int debugCounter = 0;  // temp
     int numOfLayers;
     int trainingSinceLastBatch;
     layer* layers;  // Array of all of the layers
@@ -27,7 +26,7 @@ class neurolib {
     float randF(float min, float max);
     float actFunc(float x);
     float actFuncDer(float x);
-    void softMax(float* inputs, int inputSize);
+    void softMax(float* inputs, int inputSize = 0);
     void runModel(float inputs[], float outputs[]);
     void trainModel(float* inputs, int truth);
     void applyBatch();

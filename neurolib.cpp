@@ -103,6 +103,7 @@ inline float neurolib::actFuncDer(float x) {
 }
 
 void neurolib::softMax(float* inputs, int inputSize) {
+    // Default value of inputSize is 0
 
     if (inputSize <= 0) {
         // Use output layer's size if no size is given
@@ -136,15 +137,21 @@ void neurolib::runModel(float inputs[], float outputs[]) {
     }
 
     for (int layerId = 0; layerId < numOfLayers - 1; layerId++) {
+        layer* currentLayer = &(layers[layerId]);
+        layer* nextLayer = &(layers[layerId + 1]);
+
         // multiply current neuron's value with the corresponding weight and add it to the neuron that weight is connected to
         for (int neuronId = 0; neuronId < layers[layerId].size; neuronId++) {
-            for (int weightId = 0; weightId < layers[layerId + 1].size; weightId++) {
-                layers[layerId + 1].neurons[weightId].value += layers[layerId].neurons[neuronId].weights[weightId] * layers[layerId].neurons[neuronId].value;
+            neuron* currentNeuron = &(currentLayer->neurons[neuronId]);
+
+            for (int weightId = 0; weightId < nextLayer->size; weightId++) {
+                nextLayer->neurons[weightId].value += currentNeuron->weights[weightId] * currentNeuron->value;
             }
         }
+
         // Run every neuron of the next layer through the activation function
         for (int neuronId = 0; neuronId < layers[layerId + 1].size; neuronId++) {
-            layers[layerId + 1].neurons[neuronId].value = actFunc(layers[layerId + 1].neurons[neuronId].value);
+            nextLayer->neurons[neuronId].value = actFunc(nextLayer->neurons[neuronId].value);
         }
     }
 
@@ -163,21 +170,22 @@ void neurolib::trainModel(float inputs[], int truth) {
     float* smaxResults = new float[layers[numOfLayers - 1].size];
 
     runModel(inputs, smaxResults);
-    softMax(smaxResults, 0);
+    softMax(smaxResults);
 
     // Set up output layer's derivatives and biases
     for (int neuronId = 0; neuronId < layers[numOfLayers - 1].size; neuronId++) {
+        neuron* currentNeuron = &(layers[numOfLayers - 1].neurons[neuronId]);
         if (neuronId == truth) {
             // Need to pass values before the activation function
             // Doesn't really matter for RelU or sigmoid though
-            const float derivative = (smaxResults[neuronId] - 1) * actFuncDer(layers[numOfLayers - 1].neurons[neuronId].value);
-            layers[numOfLayers - 1].neurons[neuronId].derivative = derivative;
-            layers[numOfLayers - 1].neurons[neuronId].biasBatchSum += derivative;
+            const float derivative = (smaxResults[neuronId] - 1) * actFuncDer(currentNeuron->value);
+            currentNeuron->derivative = derivative;
+            currentNeuron->biasBatchSum += derivative;
         } else {
             // Same as above
-            const float derivative = (smaxResults[neuronId]) * actFuncDer(layers[numOfLayers - 1].neurons[neuronId].value);
-            layers[numOfLayers - 1].neurons[neuronId].derivative = derivative;
-            layers[numOfLayers - 1].neurons[neuronId].biasBatchSum += derivative;
+            const float derivative = (smaxResults[neuronId]) * actFuncDer(currentNeuron->value);
+            currentNeuron->derivative = derivative;
+            currentNeuron->biasBatchSum += derivative;
         }
     }
 
@@ -216,7 +224,6 @@ void neurolib::applyBatch() {
     if (trainingSinceLastBatch == 0) {
         return;
     }
-    debugCounter++;
 
     for (int layerId = 0; layerId < numOfLayers; layerId++) {
         layer* currentLayer = &(layers[layerId]);

@@ -4,7 +4,6 @@
 
 int main() {
     // Todo: Fix weird output layer return in "runModel"
-    // Todo: Fix ugly code
 
     int layerSizes[] = {2, 3, 2};
     int numOfLayers = sizeof(layerSizes) / sizeof(int);
@@ -17,7 +16,7 @@ int main() {
     outputs[0] = 0.0;
     outputs[1] = 0.0;
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 500; i++) {
 
         inputs[0] = 0;
         inputs[1] = 1;
