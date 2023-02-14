@@ -1,22 +1,19 @@
-#include <iostream>
-
 #include "neurolib.h"
 
 int main() {
-    // Todo: Fix weird output layer return in "runModel"
 
     int layerSizes[] = {2, 3, 2};
     int numOfLayers = sizeof(layerSizes) / sizeof(int);
+    float* outputs = new float[layerSizes[numOfLayers - 1]];
 
-    std::cout << "Hello" << std::endl;
+    printf("Hello!");
+    float inputs[] = {0, 1};
+
+    // neurolib neuronNet("testModel.o"); //Models can be loaded like this
+
     neurolib neuronNet(layerSizes, numOfLayers);
 
-    float inputs[] = {0, 1};
-    float* outputs = new float[layerSizes[numOfLayers - 1]];
-    outputs[0] = 0.0;
-    outputs[1] = 0.0;
-
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < 1000; i++) {
 
         inputs[0] = 0;
         inputs[1] = 1;
@@ -31,25 +28,26 @@ int main() {
         inputs[1] = 0;
         neuronNet.trainModel(inputs, 0);
 
-        neuronNet.printWeightInfo();
+        // neuronNet.printWeightInfo();
 
         neuronNet.applyBatch();
     }
 
     neuronNet.printWeightInfo();
+    neuronNet.saveModel("testModel.o");
 
     inputs[0] = 1.0;
-    inputs[1] = 1.0;
+    inputs[1] = 0.0;
     neuronNet.runModel(inputs, outputs);
 
-    printf("Output of raw model in main:\n");
+    printf("Output of raw model:\n");
     for (int i = 0; i < layerSizes[numOfLayers - 1]; i++) {
         printf("  %d: %f\n", i, outputs[i]);
     }
 
     neuronNet.softMax(outputs, 2);
 
-    printf("\nOutput of SoftMax in main:\n");
+    printf("\nOutput of SoftMax:\n");
     for (int i = 0; i < layerSizes[numOfLayers - 1]; i++) {
         printf("  %d: %f\n", i, outputs[i]);
     }
