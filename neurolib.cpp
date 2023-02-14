@@ -5,6 +5,69 @@
 
 #include <cmath>
 
+neurolib::neurolib(std::string modelName) {
+    // For loading models
+
+    std::ifstream modelFile(modelName, std::ios::in | std::ios::binary);
+
+    // No error checking is done in here
+    // That needs to be taken care of
+
+    char* buffer = new char[4];
+
+    // Would be nice if we checked the magic bytes
+    // We will just skip over them for now
+    modelFile.read(buffer, 4);
+    modelFile.read(buffer, 4);
+    modelFile.read(buffer, 4);
+
+    modelFile.read(reinterpret_cast<char*>(&numOfLayers), 4);
+    layers = new layer[numOfLayers];  // Initialize layers
+
+    for (int layerId = 0; layerId < numOfLayers; layerId++) {
+        modelFile.read(reinterpret_cast<char*>(&layers[layerId].size), 4);
+    }
+
+    for (int layerId = 0; layerId < numOfLayers; layerId++) {
+        layer* currentLayer = &(layers[layerId]);
+
+        currentLayer->neurons = new neuron[currentLayer->size];
+        // Initialize this layer's neurons
+
+        for (int neuronId = 0; neuronId < currentLayer->size; neuronId++) {
+            neuron* currentNeuron = &(currentLayer->neurons[neuronId]);
+
+            modelFile.read(reinterpret_cast<char*>(&currentNeuron->bias), sizeof(float));
+            // Read biases
+
+            if (layerId == numOfLayers - 1) {
+                // output layer doesn't need any weights
+                continue;
+            }
+
+            const int weightCount = layers[layerId + 1].size;
+            currentNeuron->weights = new float[weightCount];
+
+            for (int weightId = 0; weightId < weightCount; weightId++) {
+
+                modelFile.read(reinterpret_cast<char*>(&currentNeuron->weights[weightId]), sizeof(float));
+                // Read weights
+            }
+        }
+    }
+
+    /*layer* currentLayer = &(layers[numOfLayers - 1]);
+    for (int neuronId = 0; neuronId < currentLayer->size; neuronId++) {
+        neuron* currentNeuron = &(currentLayer->neurons[neuronId]);
+        modelFile.read(reinterpret_cast<char*>(&currentNeuron->bias), sizeof(float));
+        // Read output layer's biases
+    }*/
+
+    modelFile.close();
+
+    delete[] buffer;
+}
+
 neurolib::neurolib(int layerSizes[], int numOfLayers) {
 
     this->numOfLayers = numOfLayers;
@@ -251,6 +314,55 @@ void neurolib::applyBatch() {
     }
 
     trainingSinceLastBatch = 0;
+}
+
+int neurolib::saveModel(std::string modelName) {
+
+    // Todo: No error checking is done in this function
+    // and that is bad
+
+    std::ofstream modelFile(modelName, std::ios::out | std::ios::binary | std::ios::ate);
+
+    float modelFileWeight = 0.5;
+
+    modelFile.write(magicBytes, sizeof(magicBytes));
+    // Write magic bytes
+
+    modelFile.write(reinterpret_cast<const char*>(&numOfLayers), sizeof(int));
+    // Write the number of layers
+
+    for (int layerId = 0; layerId < numOfLayers; layerId++) {
+        modelFile.write(reinterpret_cast<const char*>(&layers[layerId]), sizeof(int));  // Todo: Shouldn't it be layers[layerId].size ?
+        // Write each layer's size
+    }
+
+    for (int layerId = 0; layerId < numOfLayers - 1; layerId++) {
+        layer* currentLayer = &(layers[layerId]);
+        const int weightCount = layers[layerId + 1].size;
+
+        for (int neuronId = 0; neuronId < currentLayer->size; neuronId++) {
+            neuron* currentNeuron = &(currentLayer->neurons[neuronId]);
+
+            modelFile.write(reinterpret_cast<const char*>(&currentNeuron->bias), sizeof(float));
+            // Write biases
+
+            for (int weightId = 0; weightId < weightCount; weightId++) {
+                modelFile.write(reinterpret_cast<const char*>(&currentNeuron->weights[weightId]), sizeof(float));
+                // Write weights
+            }
+        }
+    }
+
+    layer* currentLayer = &(layers[numOfLayers - 1]);
+    for (int neuronId = 0; neuronId < currentLayer->size; neuronId++) {
+        neuron* currentNeuron = &(currentLayer->neurons[neuronId]);
+        modelFile.write(reinterpret_cast<const char*>(&currentNeuron->bias), sizeof(float));
+        // Write output layer's biases
+    }
+
+    modelFile.close();
+
+    return 0;
 }
 
 void neurolib::printWeightInfo() {

@@ -1,3 +1,5 @@
+#include <string>
+
 class neurolib {
 
    public:
@@ -15,12 +17,17 @@ class neurolib {
         neuron* neurons;  // Array of neurons
     };
 
+    const char magicBytes[12] = "Neuro Model";
+    // 4e6575726f204d6f64656c00 in hex
+    // These are the first bytes for a model file
+
     const float stepSize = 0.1;  // Learning rate
 
     int numOfLayers;
-    int trainingSinceLastBatch;
+    int trainingSinceLastBatch = 0;
     layer* layers;  // Array of all of the layers
 
+    neurolib(std::string);  // Used for loading models
     neurolib(int layerSizes[], int numOfLayers);
     ~neurolib();
     float randF(float min, float max);
@@ -30,5 +37,6 @@ class neurolib {
     void runModel(float inputs[], float outputs[]);
     void trainModel(float* inputs, int truth);
     void applyBatch();
+    int saveModel(std::string modelName);
     void printWeightInfo();
 };
