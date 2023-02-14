@@ -7,7 +7,12 @@ int main() {
     float* outputs = new float[layerSizes[numOfLayers - 1]];
 
     printf("Hello!");
-    float inputs[] = {0, 1};
+    float inputs[layerSizes[0]];
+    // Has some weird behaviour when the input array size doesn't match the input layer size
+
+    for (int i = 0; i < layerSizes[0]; i++) {
+        inputs[i] = i % 2;
+    }
 
     // neurolib neuronNet("testModel.o"); //Models can be loaded like this
 
