@@ -56,13 +56,6 @@ neurolib::neurolib(std::string modelName) {
         }
     }
 
-    /*layer* currentLayer = &(layers[numOfLayers - 1]);
-    for (int neuronId = 0; neuronId < currentLayer->size; neuronId++) {
-        neuron* currentNeuron = &(currentLayer->neurons[neuronId]);
-        modelFile.read(reinterpret_cast<char*>(&currentNeuron->bias), sizeof(float));
-        // Read output layer's biases
-    }*/
-
     modelFile.close();
 
     delete[] buffer;
