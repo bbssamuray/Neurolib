@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include <cmath>
+#include <fstream>
 
 neurolib::neurolib(std::string modelName) {
     // For loading models
@@ -41,17 +42,24 @@ neurolib::neurolib(std::string modelName) {
             // Read biases
 
             if (layerId == numOfLayers - 1) {
+                currentNeuron->weights = NULL;
+                currentNeuron->weightBatchSum = NULL;
                 // output layer doesn't need any weights
                 continue;
             }
 
             const int weightCount = layers[layerId + 1].size;
             currentNeuron->weights = new float[weightCount];
+            // Initialize weights
+            currentNeuron->weightBatchSum = new float[weightCount];
+            // Initialize weight batches
 
             for (int weightId = 0; weightId < weightCount; weightId++) {
 
                 modelFile.read(reinterpret_cast<char*>(&currentNeuron->weights[weightId]), sizeof(float));
                 // Read weights
+
+                currentNeuron->weightBatchSum[weightId] = 0.0;
             }
         }
     }
@@ -64,7 +72,7 @@ neurolib::neurolib(std::string modelName) {
 neurolib::neurolib(int layerSizes[], int numOfLayers) {
 
     this->numOfLayers = numOfLayers;
-    const float startingValue = 0.2;  // All of the weights and biases will be between startingValue and -startingValue when initializing
+    const float startingValue = 0.2;  // All of the weights and biases will be between +startingValue and -startingValue when initializing
 
     trainingSinceLastBatch = 0;
 
@@ -72,29 +80,34 @@ neurolib::neurolib(int layerSizes[], int numOfLayers) {
 
     layers = new layer[numOfLayers];  // Initialize layers
     for (int layerId = 0; layerId < numOfLayers; layerId++) {
-        layers[layerId].size = layerSizes[layerId];
+        layer* currentLayer = &(layers[layerId]);
 
-        layers[layerId].neurons = new neuron[layerSizes[layerId]];  // Initialize neurons in the said layer
+        currentLayer->size = layerSizes[layerId];
+
+        currentLayer->neurons = new neuron[layerSizes[layerId]];  // Initialize neurons in the said layer
         for (int neuronId = 0; neuronId < layerSizes[layerId]; neuronId++) {
+            neuron* currentNeuron = &(currentLayer->neurons[neuronId]);
 
             // randomize biases
-            layers[layerId].neurons[neuronId].bias = randF(-startingValue, startingValue);
+            currentNeuron->bias = randF(-startingValue, startingValue);
             // Set bias batch to 0
-            layers[layerId].neurons[neuronId].biasBatchSum = 0.0;
+            currentNeuron->biasBatchSum = 0.0;
 
             if (layerId == numOfLayers - 1) {
+                currentNeuron->weights = NULL;
+                currentNeuron->weightBatchSum = NULL;
                 // output layer doesn't need any weights
                 continue;
             }
 
-            layers[layerId].neurons[neuronId].weights = new float[layerSizes[layerId + 1]];         // Initialize weights connecting to the next layer
-            layers[layerId].neurons[neuronId].weightBatchSum = new float[layerSizes[layerId + 1]];  // Init weight batches
+            currentNeuron->weights = new float[layerSizes[layerId + 1]];         // Initialize weights connecting to the next layer
+            currentNeuron->weightBatchSum = new float[layerSizes[layerId + 1]];  // Init weight batches
 
             for (int weightId = 0; weightId < layerSizes[layerId + 1]; weightId++) {
                 // Randomize weights
-                layers[layerId].neurons[neuronId].weights[weightId] = randF(-startingValue, startingValue);
+                currentNeuron->weights[weightId] = randF(-startingValue, startingValue);
                 // Set weight batch to 0
-                layers[layerId].neurons[neuronId].weightBatchSum[weightId] = 0.0;
+                currentNeuron->weightBatchSum[weightId] = 0.0;
             }
         }
     }
@@ -103,13 +116,16 @@ neurolib::neurolib(int layerSizes[], int numOfLayers) {
 neurolib::~neurolib() {
     for (int layerId = 0; layerId < numOfLayers; layerId++) {
         for (int neuronId = 0; neuronId < layers[layerId].size; neuronId++) {
-            delete[] layers[layerId].neurons[neuronId].weights;
-            delete[] layers[layerId].neurons[neuronId].weightBatchSum;
-            // delete[] layers[layerId].neurons[neuronId].biasBatchSum;
+            if (layers[layerId].neurons[neuronId].weights != NULL)
+                delete[] layers[layerId].neurons[neuronId].weights;
+            if (layers[layerId].neurons[neuronId].weightBatchSum != NULL)
+                delete[] layers[layerId].neurons[neuronId].weightBatchSum;
         }
-        delete[] layers[layerId].neurons;
+        if (layers[layerId].neurons != NULL)
+            delete[] layers[layerId].neurons;
     }
-    delete[] layers;
+    if (layers != NULL)
+        delete[] layers;
 }
 
 float neurolib::randF(float min, float max) {
@@ -117,7 +133,7 @@ float neurolib::randF(float min, float max) {
     return (float)(rand()) / (float)(RAND_MAX) * (max - min) + (min);
 }
 
-#define FUNCRELU  // Comment this line to use sigmoid
+#define FUNCRELU  // Comment this line to use sigmoid, not quite sure how well it works though
 
 #if !defined FUNCRELU
 #define FUNCSIGMOID
@@ -159,6 +175,8 @@ inline float neurolib::actFuncDer(float x) {
 }
 
 void neurolib::softMax(float* inputs, int inputSize) {
+    // Applies soft max to inputs and writes it into the same array
+
     // Default value of inputSize is 0
 
     if (inputSize <= 0) {
@@ -179,6 +197,9 @@ void neurolib::softMax(float* inputs, int inputSize) {
 }
 
 void neurolib::runModel(float inputs[], float outputs[]) {
+    // Runs the model with the given inputs
+    // Results will be written to outputs
+    // outputs must be initialized before passing it here
 
     // Set input layer's values
     for (int inputId = 0; inputId < layers[0].size; inputId++) {
@@ -211,20 +232,25 @@ void neurolib::runModel(float inputs[], float outputs[]) {
         }
     }
 
-    // Todo: Return the output layer's values as a dynamic array
-
     for (int i = 0; i < layers[numOfLayers - 1].size; i++) {
         outputs[i] = layers[numOfLayers - 1].neurons[i].value;
     }
 }
 
-void neurolib::trainModel(float inputs[], int truth) {
+void neurolib::trainModel(float inputs[], int truth, float outputs[]) {
+    // Calculate derivatives and add tweaks to the batch sums
+
     // truth is the ID of output neuron that should be 1.0
 
     trainingSinceLastBatch++;
 
-    float* smaxResults = new float[layers[numOfLayers - 1].size];
+    float* smaxResults;
 
+    if (outputs == NULL) {
+        smaxResults = new float[layers[numOfLayers - 1].size];
+    } else {
+        smaxResults = outputs;
+    }
     runModel(inputs, smaxResults);
     softMax(smaxResults);
 
@@ -272,12 +298,16 @@ void neurolib::trainModel(float inputs[], int truth) {
         }
     }
 
-    delete[] smaxResults;
+    if (outputs == NULL) {
+        delete[] smaxResults;
+    }
 }
 
 void neurolib::applyBatch() {
+    // Averages the weight and bias addition sums in the current batch and adds it to the model
 
     if (trainingSinceLastBatch == 0) {
+        // Nothing to do...
         return;
     }
 
@@ -310,6 +340,7 @@ void neurolib::applyBatch() {
 }
 
 int neurolib::saveModel(std::string modelName) {
+    // Saves model to the given path
 
     // Todo: No error checking is done in this function
     // and that is bad
@@ -325,7 +356,7 @@ int neurolib::saveModel(std::string modelName) {
     // Write the number of layers
 
     for (int layerId = 0; layerId < numOfLayers; layerId++) {
-        modelFile.write(reinterpret_cast<const char*>(&layers[layerId]), sizeof(int));  // Todo: Shouldn't it be layers[layerId].size ?
+        modelFile.write(reinterpret_cast<const char*>(&layers[layerId].size), sizeof(int));
         // Write each layer's size
     }
 
@@ -359,6 +390,7 @@ int neurolib::saveModel(std::string modelName) {
 }
 
 void neurolib::printWeightInfo() {
+    // Prints some debug info
 
     bool printBatchSum = false;
     if (trainingSinceLastBatch != 0) {

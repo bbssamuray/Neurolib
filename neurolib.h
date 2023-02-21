@@ -30,13 +30,15 @@ class neurolib {
     neurolib(std::string);  // Used for loading models
     neurolib(int layerSizes[], int numOfLayers);
     ~neurolib();
-    float randF(float min, float max);
-    float actFunc(float x);
-    float actFuncDer(float x);
     void softMax(float* inputs, int inputSize = 0);
     void runModel(float inputs[], float outputs[]);
-    void trainModel(float* inputs, int truth);
+    void trainModel(float* inputs, int truth, float outputs[] = NULL);
     void applyBatch();
     int saveModel(std::string modelName);
     void printWeightInfo();
+
+   private:
+    float randF(float min, float max);
+    float actFunc(float x);
+    float actFuncDer(float x);
 };
