@@ -11,6 +11,13 @@ At the moment it uses/supports:
 
 This repo includes a simple usage sample in main.cpp
 
+You can build it by just running:
+```sh
+  git clone https://github.com/bbssamuray/Neurolib
+  cd Neurolib
+  make
+```
+
 # Why?
 I wrote this purely for the learning experience. This is neither practical or fast.
 
